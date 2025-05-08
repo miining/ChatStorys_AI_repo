@@ -48,14 +48,21 @@ def main():
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
+    # Check for GPU availability
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    if torch.cuda.is_available():
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
+        torch.cuda.manual_seed_all(args.seed)
+
     # Load tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
     model = AutoModelForSequenceClassification.from_pretrained(
         args.model_name_or_path,
         num_labels=args.num_labels,
         problem_type="single_label_classification",
-        max_length=512
     )
+    model = model.to(device)  # Move model to GPU if available
 
     # Load and preprocess data
     train_df = pd.read_csv(args.train_file)
@@ -98,7 +105,7 @@ def main():
         per_device_eval_batch_size=args.per_device_eval_batch_size,
         num_train_epochs=args.num_train_epochs,
         weight_decay=0.01,
-        evaluation_strategy="steps",
+        eval_strategy="steps",
         eval_steps=500,
         save_strategy="steps",
         load_best_model_at_end=True,
@@ -107,6 +114,7 @@ def main():
         save_steps=args.save_steps,
         save_total_limit=3,
         remove_unused_columns=False,
+        fp16=torch.cuda.is_available(),  # Enable mixed precision training if GPU is available
     )
 
     # Initialize Trainer

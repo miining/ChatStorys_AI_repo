@@ -36,27 +36,28 @@
 
 ## 🧱 System Architecture
 
-User Input
-│
-└──► RAG-based Prompt Constructor (BM25 + Genre requirements)
-│
-▼
-GPT-4o Prompt (Genre + Previous + User Contents)
-│
-▼
-GPT-4o Story Generator
-│
-▼
-┌────────────────────────────────────────────┐
-│ KoELECTRA Sentiment Classifier │
-│ - Multi-label emotion prediction │
-└────────────────────────────────────────────┘
-│
-▼
-Emotion Vector → Music Feature Matching (Cosine)
-│
-▼
-🎧 Music Recommendation List
+### 1. User Input
+- 사용자의 소설 입력 및 선택된 장르 정보 입력
+
+### 2. Prompt 구성 (RAG 기반)
+- BM25 기반으로 Genre Requirement DB에서 장르 요건 문서 검색
+- 검색된 장르 요건 + 이전 소설 내용 + 현재 사용자 입력 → GPT 프롬프트 생성
+
+### 3. GPT-4o 기반 소설 생성
+- 프롬프트를 기반으로 GPT-4o가 소설 본문 생성
+- 생성된 소설 내용은 MongoDB에 저장
+
+### 4. 감정 분석 (KoELECTRA)
+- GPT 및 사용자 간 대화 내용을 KoELECTRA 모델에 입력
+- 다중 감정 분류 (행복, 슬픔, 분노 등) 수행
+- 출력된 감정 벡터를 Music Recommendation에 사용
+
+### 5. 음악 추천
+- 감정 벡터와 Spotify / Last.fm 등에서 가져온 음악 feature 간 cosine similarity 계산
+- 감정에 적합한 음악 추천 리스트 반환
+
+### 6. 결과 출력
+- GPT가 생성한 스토리 + 감정 기반 추천 음악이 함께 사용자에게 제공됨
 
 ---
 

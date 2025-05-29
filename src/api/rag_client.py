@@ -11,9 +11,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class RAGClient:
-    def __init__(self, model_path: str = None):
-        self.embeddings = OpenAIEmbeddings()
-        self.model_path = model_path or os.getenv("MODEL_PATH")
+    def __init__(self, model_path: str = None, openai_api_key: str = None):
+        # 환경변수에서 API 키와 모델 경로 가져오기
+        api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OpenAI API key is required")
+            
+        self.embeddings = OpenAIEmbeddings(openai_api_key=api_key)
+        self.model_path = model_path or os.getenv("VECTOR_STORE_PATH", "./vector_store")
         self.vector_store = None
         self._initialize_vector_store()
 
@@ -30,7 +35,7 @@ class RAGClient:
         except Exception as e:
             raise Exception(f"Error initializing vector store: {str(e)}")
 
-    async def search_genre_requirements(self, genre: str) -> Dict:
+    def search_genre_requirements(self, genre: str) -> Dict:
         """
         Search for genre-specific requirements and guidelines
         """
@@ -44,7 +49,7 @@ class RAGClient:
         except Exception as e:
             raise Exception(f"Error searching genre requirements: {str(e)}")
 
-    async def search_similar_chapters(self, query: str) -> List:
+    def search_similar_chapters(self, query: str) -> List:
         """
         Search for similar chapters based on the query
         """

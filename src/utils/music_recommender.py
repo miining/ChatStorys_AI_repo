@@ -5,24 +5,28 @@ Algorithm 1, 3, 4를 구현하여 감정 기반 음악 추천을 수행합니다
 """
 
 import numpy as np
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List
 from .emotion_analyzer import EmotionAnalyzer
 
 class MusicRecommender:
-    def __init__(self):
+    def __init__(self, db_manager=None):
         """
         음악 추천 시스템 초기화
+        
+        Args:
+            db_manager: DatabaseManager 인스턴스 (선택사항)
         """
         self.emotion_analyzer = EmotionAnalyzer()
+        self.db_manager = db_manager
         
-        # Algorithm 4: get_music_features_for_emotion의 weight_table
+        # Algorithm 4: get_music_features_for_emotion의 weight_table (실제 KoELECTRA 레이블 기준)
         self.weight_table = {
-            'anger': [0.14, 0.86, 0.95, 0.05, 0.25, 0.75, 0.20],
-            'sadness': [0.82, 0.18, 0.14, 0.86, 0.05, 0.95, 0.05],
-            'anxiety': [0.22, 0.78, 0.92, 0.08, 0.17, 0.83, 0.10],
-            'hurt': [0.75, 0.25, 0.20, 0.80, 0.13, 0.88, 0.05],
-            'embarrassment': [0.33, 0.67, 0.89, 0.11, 0.33, 0.67, 0.15],
-            'joy': [0.50, 0.50, 0.09, 0.91, 0.95, 0.05, 0.90]
+            'angry': [0.14, 0.86, 0.95, 0.05, 0.25, 0.75, 0.20],
+            'sad': [0.82, 0.18, 0.14, 0.86, 0.05, 0.95, 0.05],
+            'anxious': [0.22, 0.78, 0.92, 0.08, 0.17, 0.83, 0.10],
+            'heartache': [0.75, 0.25, 0.20, 0.80, 0.13, 0.88, 0.05],
+            'embarrassed': [0.33, 0.67, 0.89, 0.11, 0.33, 0.67, 0.15],
+            'happy': [0.50, 0.50, 0.09, 0.91, 0.95, 0.05, 0.90]
         }
         
         # 특성 이름들
@@ -33,7 +37,7 @@ class MusicRecommender:
         Algorithm 4: 감정에 대한 음악 특성 벡터 반환
         
         Args:
-            emotion (str): 감정 ('anger', 'sadness', 'anxiety', 'hurt', 'embarrassment', 'joy')
+            emotion (str): 감정 ('angry', 'happy', 'anxious', 'embarrassed', 'sad', 'heartache')
             
         Returns:
             List[float]: 음악 특성 벡터 [acoustic, electronic, aggressive, relaxed, happy, sad, party]
@@ -45,8 +49,8 @@ class MusicRecommender:
         if emotion in self.weight_table:
             music_features = self.weight_table[emotion].copy()
         else:
-            # 기본값으로 joy 사용
-            music_features = self.weight_table['joy'].copy()
+            # 기본값으로 happy 사용
+            music_features = self.weight_table['happy'].copy()
             
         # 4. return music_features
         return music_features
@@ -87,15 +91,17 @@ class MusicRecommender:
         # 8. return similarity
         return float(similarity)
 
-    def recommend_music(self, userID: str, novelContents: str, musicDB: List[Dict], N: int = 5) -> List[Dict]:
+    def recommend_music(self, userID: str, novelContents: str, musicDB: List[Dict] = None, N: int = 5, db_manager=None) -> List[Dict]:
         """
         Algorithm 1: 소설 내용 기반 음악 추천
         
         Args:
             userID (str): 사용자 ID
             novelContents (str): 소설 내용
-            musicDB (List[Dict]): 음악 데이터베이스 (각 항목은 songName, artist, feature_vector 포함)
+            musicDB (List[Dict], optional): 음악 데이터베이스 (각 항목은 songName, artist, feature_vector 포함)
+                                           None이면 db_manager에서 자동으로 가져옴
             N (int): 추천할 음악 개수 (기본값: 5)
+            db_manager: DatabaseManager 인스턴스 (musicDB가 None일 때 필요)
             
         Returns:
             List[Dict]: 추천된 음악 리스트
@@ -108,7 +114,7 @@ class MusicRecommender:
             # 3. // 2. Select the top emotion
             # 4. top_emotion ← arg max_e emotion_probs[e]
             if not emotion_probs:
-                top_emotion = 'joy'  # 기본값
+                top_emotion = 'happy'  # 기본값
             else:
                 top_emotion = max(emotion_probs.items(), key=lambda x: x[1])[0]
             
@@ -118,7 +124,12 @@ class MusicRecommender:
             
             # 7. // 4. Load song feature vectors from the music database
             # 8. musicDB ← load_music_database_features() {Each entry: (songName, artist, feature_vector)}
-            # (musicDB는 이미 매개변수로 전달됨)
+            if musicDB is None:
+                # 클래스의 db_manager를 우선 사용, 없으면 매개변수의 db_manager 사용
+                manager = self.db_manager or db_manager
+                if manager is None:
+                    raise ValueError("Either musicDB or db_manager must be provided")
+                musicDB = manager.get_music_database_for_recommendation()
             
             # 9. // 5. Compute cosine similarity
             # 10. similarity_list ← ∅
@@ -170,96 +181,3 @@ class MusicRecommender:
         except Exception as e:
             print(f"음악 추천 오류: {str(e)}")
             return []
-
-    def save_user_recommendation_history(self, userID: str, recommendedList: List[Dict]) -> bool:
-        """
-        사용자 추천 기록 저장 (선택사항)
-        
-        Args:
-            userID (str): 사용자 ID
-            recommendedList (List[Dict]): 추천된 음악 리스트
-            
-        Returns:
-            bool: 저장 성공 여부
-        """
-        # 실제 구현에서는 데이터베이스에 저장
-        print(f"사용자 {userID}의 추천 기록 저장: {len(recommendedList)}개 음악")
-        return True
-
-    def get_emotion_music_mapping(self) -> Dict[str, List[float]]:
-        """
-        감정별 음악 특성 매핑 테이블 반환
-        
-        Returns:
-            Dict[str, List[float]]: 감정별 음악 특성 딕셔너리
-        """
-        return self.weight_table.copy()
-
-    def analyze_music_features(self, music_features: List[float]) -> Dict[str, str]:
-        """
-        음악 특성 벡터를 분석하여 특성 설명 반환
-        
-        Args:
-            music_features (List[float]): 음악 특성 벡터
-            
-        Returns:
-            Dict[str, str]: 특성별 설명
-        """
-        if len(music_features) != 7:
-            return {"error": "Invalid feature vector length"}
-            
-        descriptions = {}
-        for i, (feature_name, value) in enumerate(zip(self.feature_names, music_features)):
-            if value > 0.7:
-                descriptions[feature_name] = "High"
-            elif value > 0.3:
-                descriptions[feature_name] = "Medium"
-            else:
-                descriptions[feature_name] = "Low"
-                
-        return descriptions
-
-
-# 사용 예시
-if __name__ == "__main__":
-    # 음악 추천 시스템 초기화
-    recommender = MusicRecommender()
-    
-    # 테스트용 음악 데이터베이스
-    test_musicDB = [
-        {
-            'songName': '행복한 노래',
-            'artist': '작곡가1',
-            'feature_vector': [0.3, 0.4, 0.1, 0.9, 0.95, 0.1, 0.8]  # joy 특성과 유사
-        },
-        {
-            'songName': '슬픈 발라드',
-            'artist': '작곡가2',
-            'feature_vector': [0.8, 0.2, 0.1, 0.8, 0.1, 0.9, 0.1]  # sadness 특성과 유사
-        },
-        {
-            'songName': '격렬한 록',
-            'artist': '작곡가3',
-            'feature_vector': [0.1, 0.9, 0.95, 0.1, 0.3, 0.7, 0.2]  # anger 특성과 유사
-        }
-    ]
-    
-    # 테스트 소설 내용
-    test_novel = "오늘은 정말 기쁜 날이었다. 모든 일이 잘 풀렸고 친구들과 즐거운 시간을 보냈다."
-    
-    # 음악 추천 테스트
-    recommendations = recommender.recommend_music("user123", test_novel, test_musicDB, N=3)
-    
-    print("🎵 음악 추천 결과:")
-    for i, rec in enumerate(recommendations, 1):
-        print(f"{i}. {rec['songName']} - {rec['artist']}")
-        print(f"   감정: {rec['emotion']}, 유사도: {rec['similarity']:.3f}")
-    
-    # 감정별 특성 테스트
-    print("\n📊 감정별 음악 특성:")
-    for emotion in ['joy', 'sadness', 'anger']:
-        features = recommender.get_music_features_for_emotion(emotion)
-        print(f"{emotion}: {features}")
-        analysis = recommender.analyze_music_features(features)
-        print(f"  분석: {analysis}")
-        print()

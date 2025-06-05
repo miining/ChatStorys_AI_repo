@@ -25,21 +25,22 @@ class EmotionAnalyzer:
         self.model.to(self.device)
         self.model.eval()
         
-        # 감정 레이블 정의 (Algorithm 4에 맞춰 조정)
+        # 감정 레이블 정의 (실제 KoELECTRA 모델 출력 기준)
         self.emotion_labels = [
-            'anger', 'sadness', 'anxiety', 'hurt', 'embarrassment', 'joy'
+            'angry', 'happy', 'anxious', 'embarrassed', 'sad', 'heartache'
         ]
         
-        # 한국어-영어 감정 매핑
+        # 한국어-영어 감정 매핑 (실제 모델 레이블 기준)
         self.emotion_mapping = {
-            '분노': 'anger',
-            '슬픔': 'sadness', 
-            '불안': 'anxiety',
-            '상처': 'hurt',
-            '당황': 'embarrassment',
-            '기쁨': 'joy',
-            '기대': 'joy',  # 기대는 기쁨으로 매핑
-            '지루함': 'sadness'  # 지루함은 슬픔으로 매핑
+            '분노': 'angry',
+            '행복': 'happy',
+            '불안': 'anxious', 
+            '당황': 'embarrassed',
+            '슬픔': 'sad',
+            '상처': 'heartache',
+            '기쁨': 'happy',  # 기쁨은 행복으로 매핑
+            '기대': 'happy',  # 기대는 행복으로 매핑
+            '우울': 'sad'     # 우울은 슬픔으로 매핑
         }
 
     def analyze_emotion_with_KoELECTRA(self, text: str) -> Dict[str, float]:
@@ -70,13 +71,12 @@ class EmotionAnalyzer:
         
         # 4. return probs
         emotion_probs = {}
-        korean_labels = ['분노', '슬픔', '불안', '상처', '당황', '기쁨', '기대', '지루함']
         
-        # 현재 모델이 8개 감정을 출력한다고 가정하고 매핑
-        for i, korean_label in enumerate(korean_labels):
+        # 실제 KoELECTRA 모델이 출력하는 순서대로 매핑
+        # 모델 출력 순서: angry, happy, anxious, embarrassed, sad, heartache
+        for i, emotion_label in enumerate(self.emotion_labels):
             if i < len(probs[0]):
-                english_label = self.emotion_mapping.get(korean_label, korean_label)
-                emotion_probs[english_label] = float(probs[0][i])
+                emotion_probs[emotion_label] = float(probs[0][i])
         
         return emotion_probs
 
@@ -104,17 +104,17 @@ class EmotionAnalyzer:
                 }
             else:
                 return {
-                    'dominant_emotion': 'joy',
+                    'dominant_emotion': 'happy',
                     'confidence': 0.5,
-                    'all_emotions': {'joy': 0.5}
+                    'all_emotions': {'happy': 0.5}
                 }
                 
         except Exception as e:
             print(f"감정 분석 오류: {str(e)}")
             return {
-                'dominant_emotion': 'joy',
+                'dominant_emotion': 'happy',
                 'confidence': 0.5,
-                'all_emotions': {'joy': 0.5}
+                'all_emotions': {'happy': 0.5}
             }
 
     def analyze_text(self, text: str) -> Dict[str, float]:

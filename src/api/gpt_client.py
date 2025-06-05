@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
@@ -188,79 +188,3 @@ class GPTClient:
             
         except Exception as e:
             raise Exception(f"Error summarizing chapter: {str(e)}")
-
-    def generate_with_genre_requirements(self, genre: str, requirements: Dict, user_message: str) -> str:
-        """
-        Generate content with specific genre requirements using enhanced prompts
-        
-        Args:
-            genre: 소설 장르
-            requirements: 장르별 요구사항
-            user_message: 사용자 요청
-            
-        Returns:
-            장르에 맞는 생성된 내용
-        """
-        try:
-            # 장르별 전문 프롬프트 사용
-            system_prompt = PromptTemplates.get_genre_prompt(genre, requirements)
-            
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                presence_penalty=0.2,
-                frequency_penalty=0.1
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            raise Exception(f"Error generating genre-specific content: {str(e)}")
-
-    def format_response(self, response: str, metadata: Dict = None) -> Dict:
-        """
-        Format response with comprehensive metadata
-        
-        Args:
-            response: 생성된 응답
-            metadata: 추가 메타데이터
-            
-        Returns:
-            포맷된 응답 딕셔너리
-        """
-        result = {
-            "content": response,
-            "status": "success",
-            "metadata": {
-                "word_count": len(response.split()),
-                "character_count": len(response),
-                "estimated_tokens": self._estimate_tokens(response),
-                "estimated_reading_time": max(1, len(response.split()) // 200),  # 분 단위
-                "line_count": len(response.split('\n'))
-            }
-        }
-        
-        if metadata:
-            result["metadata"].update(metadata)
-            
-        return result
-
-    def get_model_info(self) -> Dict:
-        """
-        Get current model configuration information
-        
-        Returns:
-            모델 설정 정보
-        """
-        return {
-            "model": self.model,
-            "max_tokens": self.max_tokens,
-            "temperature": self.temperature,
-            "max_history_tokens": self.max_history_tokens,
-            "max_context_length": self.max_context_length
-        } 
